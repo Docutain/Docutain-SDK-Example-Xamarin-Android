@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="1" android:versionName="1.0" package="de.docutain.Docutain_SDK_Example_Xamarin_Android" android:installLocation="auto">
+	<uses-sdk android:minSdkVersion="21" android:targetSdkVersion="33" />
+	<application android:debuggable="true" android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:supportsRtl="true" android:largeHeap="true" android:theme="@style/Theme.DocutainSDKExampleXamarinAndroid">
+		<provider android:name="androidx.core.content.FileProvider" android:authorities="de.docutain.Docutain_SDK_Example_Xamarin_Android.attachments" android:exported="false" android:grantUriPermissions="true">
+			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/provider_paths" />
+		</provider>
+	</application>
+	<uses-permission android:name="android.permission.CAMERA" />
+	<uses-feature android:name="android.hardware.camera" />
+	<queries>
+		<intent>
+			<action android:name="android.intent.action.SENDTO" />
+			<data android:scheme="mailto" />
+		</intent>
+	</queries>
+</manifest>
