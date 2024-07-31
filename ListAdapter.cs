@@ -28,7 +28,8 @@ namespace Docutain_SDK_Example_Xamarin_Android
         DOCUMENT_SCAN,
         DATA_EXTRACTION,
         TEXT_RECOGNITION,
-        PDF_GENERATING
+        PDF_GENERATING,
+        SETTINGS
     }
 
     internal class ListAdapter : RecyclerView.Adapter
@@ -45,27 +46,33 @@ namespace Docutain_SDK_Example_Xamarin_Android
                Icon = Resource.Drawable.document_scanner,
                Type = ItemType.DOCUMENT_SCAN
             },
-                        new ListItem
+            new ListItem
             {
                Title = Resource.String.title_data_extraction,
                Subtitle = Resource.String.subtitle_data_extraction,
                Icon = Resource.Drawable.data_extraction,
                Type = ItemType.DATA_EXTRACTION
             },
-                                    new ListItem
+            new ListItem
             {
                Title = Resource.String.title_text_recognition,
                Subtitle = Resource.String.subtitle_text_recognition,
                Icon = Resource.Drawable.ocr,
                Type = ItemType.TEXT_RECOGNITION
             },
-                                                new ListItem
+            new ListItem
             {
                Title = Resource.String.title_PDF_generating,
                Subtitle = Resource.String.subtitle_PDF_generating,
                Icon = Resource.Drawable.pdf,
                Type = ItemType.PDF_GENERATING
             },
+            new ListItem {
+               Title = Resource.String.title_settings,
+               Subtitle = Resource.String.subtitle_settings,
+               Icon = Resource.Drawable.settings,
+               Type = ItemType.SETTINGS
+            }
 
         };
 

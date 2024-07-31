@@ -15,25 +15,28 @@ namespace Docutain_SDK_Example_Xamarin_Android
     [Activity(Label = "Docutain SDK Example", MainLauncher = true)]
     public class MainActivity : AppCompatActivity
     {
+        //A valid license key is required, you can generate one on our website https://sdk.docutain.com/TrialLicense?Source=1311235
         private string licenseKey = "YOUR_LICENSE_KEY_HERE";
         private ItemType selectedOption = ItemType.NONE;
+        private SettingsSharedPreferences _settingsSharedPreferences;
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-            Xamarin.Essentials.Platform.Init(this, savedInstanceState);
-            SetContentView(Resource.Layout.activity_main);
+            Xamarin.Essentials.Platform.Init(this, savedInstanceState);            
 
+            //the Docutain SDK needs to be initialized prior to using any functionality of it
+            //a valid license key is required, you can generate one on our website https://sdk.docutain.com/TrialLicense?Source=1311235
             if (!DocutainSDK.InitSDK(Application, licenseKey))
             {
                 //init of Docutain SDK failed, get the last error message
                 System.Console.WriteLine("Initialization of the Docutain SDK failed: " + DocutainSDK.LastError);
                 //your logic to deactivate access to SDK functionality
                 if (licenseKey == "YOUR_LICENSE_KEY_HERE")
-                {
                     ShowLicenseEmptyInfo();
-                    return;
-                }
+                else
+                    ShowLicenseErrorInfo();
+                return;
             }
 
             //If you want to use text detection (OCR) and/or data extraction features, you need to set the AnalyzeConfiguration
@@ -56,6 +59,13 @@ namespace Docutain_SDK_Example_Xamarin_Android
             //You can delete all temporary files by using the following method
             DocutainSDK.DeleteTempFiles(true);
 
+            _settingsSharedPreferences = new SettingsSharedPreferences(this);
+
+            if (_settingsSharedPreferences.IsEmpty())
+                _settingsSharedPreferences.DefaultSettings();
+
+            SetContentView(Resource.Layout.activity_main);
+
             SetupRecyclerView();         
         }
 
@@ -76,7 +86,7 @@ namespace Docutain_SDK_Example_Xamarin_Android
                 {
                     case ItemType.DOCUMENT_SCAN:
                         selectedOption = ItemType.NONE;
-                        StartScan();
+                        StartScan(false);
                         break;
                     case ItemType.DATA_EXTRACTION:
                         selectedOption = ItemType.DATA_EXTRACTION;
@@ -89,6 +99,9 @@ namespace Docutain_SDK_Example_Xamarin_Android
                     case ItemType.PDF_GENERATING:
                         selectedOption = ItemType.PDF_GENERATING;
                         StartPDFGenerating();
+                        break;
+                    case ItemType.SETTINGS:
+                        StartActivity(new Intent(this, typeof(SettingsActivity)));
                         break;
                     default:
                         selectedOption = ItemType.NONE;
@@ -120,18 +133,66 @@ namespace Docutain_SDK_Example_Xamarin_Android
             }
         }
 
-        private async void StartScan()
+        private async void StartScan(bool imageImport)
         {
-            // Define a DocumentScannerConfiguration to alter the scan process and define a custom theme to match your branding
+            //There are a lot of settings to configure the scanner to match your specific needs
+            //Check out the documentation to learn more https://docs.docutain.com/docs/Xamarin/docScan#change-default-scan-behaviour
             var scanConfig = new DocumentScannerConfiguration();
-            scanConfig.AllowCaptureModeSetting = true; // defaults to false
-            scanConfig.PageEditConfig.AllowPageFilter = true; // defaults to true
-            scanConfig.PageEditConfig.AllowPageRotation = true; // defaults to true
+
+            if (imageImport)
+                scanConfig.Source = Source.GalleryMultiple;
+
+            //In this sample app we provide a settings page which the user can use to alter the scan settings
+            //The settings are stored in and read from SharedPreferences
+            //This is supposed to be just an example, you do not need to implement it in that exact way
+            //If you do not want to provide your users the possibility to alter the settings themselves at all
+            //You can just set the settings according to the apps needs
+
+            //scan settings
+            scanConfig.AllowCaptureModeSetting = _settingsSharedPreferences.GetScanItem(ScanSettings.AllowCaptureModeSetting).CheckValue;
+            scanConfig.AutoCapture = _settingsSharedPreferences.GetScanItem(ScanSettings.AutoCapture).CheckValue;
+            scanConfig.AutoCrop = _settingsSharedPreferences.GetScanItem(ScanSettings.AutoCrop).CheckValue;
+            scanConfig.MultiPage = _settingsSharedPreferences.GetScanItem(ScanSettings.MultiPage).CheckValue;
+            scanConfig.PreCaptureFocus = _settingsSharedPreferences.GetScanItem(ScanSettings.PreCaptureFocus).CheckValue;
+            scanConfig.DefaultScanFilter = _settingsSharedPreferences.GetScanFilterItem(ScanSettings.DefaultScanFilter).ScanValue;
+           
+            //edit settings
+            scanConfig.PageEditConfig.AllowPageFilter = _settingsSharedPreferences.GetEditItem(EditSettings.AllowPageFilter).EditValue;
+            scanConfig.PageEditConfig.AllowPageRotation = _settingsSharedPreferences.GetEditItem(EditSettings.AllowPageRotation).EditValue;
+            scanConfig.PageEditConfig.AllowPageArrangement = _settingsSharedPreferences.GetEditItem(EditSettings.AllowPageArrangement).EditValue;
+            scanConfig.PageEditConfig.AllowPageCropping = _settingsSharedPreferences.GetEditItem(EditSettings.AllowPageCropping).EditValue;
+            scanConfig.PageEditConfig.PageArrangementShowDeleteButton = _settingsSharedPreferences.GetEditItem(EditSettings.PageArrangementShowDeleteButton).EditValue;
+            scanConfig.PageEditConfig.PageArrangementShowPageNumber = _settingsSharedPreferences.GetEditItem(EditSettings.PageArrangementShowPageNumber).EditValue;
+            
+            //color settings
+            var colorPrimary = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorPrimary);
+            scanConfig.ColorConfig.ColorPrimary = new DocutainColor(colorPrimary.LightCircle, colorPrimary.DarkCircle);
+            var colorSecondary = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorSecondary);
+            scanConfig.ColorConfig.ColorSecondary = new DocutainColor(colorSecondary.LightCircle, colorSecondary.DarkCircle);
+            var colorOnSecondary = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorOnSecondary);
+            scanConfig.ColorConfig.ColorOnSecondary = new DocutainColor(colorOnSecondary.LightCircle, colorOnSecondary.DarkCircle);
+            var colorScanButtonsLayoutBackground = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorScanButtonsLayoutBackground);
+            scanConfig.ColorConfig.ColorScanButtonsLayoutBackground = new DocutainColor(colorScanButtonsLayoutBackground.LightCircle, colorScanButtonsLayoutBackground.DarkCircle);
+            var colorScanButtonsForeground = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorScanButtonsForeground);
+            scanConfig.ColorConfig.ColorScanButtonsForeground = new DocutainColor(colorScanButtonsForeground.LightCircle, colorScanButtonsForeground.DarkCircle);
+            var colorScanPolygon = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorScanPolygon);
+            scanConfig.ColorConfig.ColorScanPolygon = new DocutainColor(colorScanPolygon.LightCircle, colorScanPolygon.DarkCircle);
+            var colorBottomBarBackground = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorBottomBarBackground);
+            scanConfig.ColorConfig.ColorBottomBarBackground = new DocutainColor(colorBottomBarBackground.LightCircle, colorBottomBarBackground.DarkCircle);
+            var colorBottomBarForeground = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorBottomBarForeground);
+            scanConfig.ColorConfig.ColorBottomBarForeground = new DocutainColor(colorBottomBarForeground.LightCircle, colorBottomBarForeground.DarkCircle);
+            var colorTopBarBackground = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorTopBarBackground);
+            scanConfig.ColorConfig.ColorTopBarBackground = new DocutainColor(colorTopBarBackground.LightCircle, colorTopBarBackground.DarkCircle);
+            var colorTopBarForeground = _settingsSharedPreferences.GetColorItem(ColorSettings.ColorTopBarForeground);
+            scanConfig.ColorConfig.ColorTopBarForeground = new DocutainColor(colorTopBarForeground.LightCircle, colorTopBarForeground.DarkCircle);
+
             // alter the onboarding image source if you like
             //scanConfig.OnboardingImageSource = ...
 
+            
+
             // detailed information about theming possibilities can be found here: https://docs.docutain.com/docs/Xamarin/theming
-            scanConfig.Theme = Resource.Style.Theme_DocutainSDK;
+            //scanConfig.Theme = ...
                    
             //start the document scanner
             bool success = await UI.ScanDocument(this, scanConfig);
@@ -173,48 +234,7 @@ namespace Docutain_SDK_Example_Xamarin_Android
                     System.Console.WriteLine("Select an input option first");
                     break;
             }
-        }
-
-        private async void StartImageImport()
-        {
-            FileResult imageFile = null;
-            switch (selectedOption)
-            {
-                case ItemType.PDF_GENERATING:
-                    imageFile = await FilePicker.PickAsync(new PickOptions
-                    {
-                        FileTypes = FilePickerFileType.Images
-                    });
-                    if (imageFile != null)
-                        GeneratePDF(imageFile.FullPath);
-                    else
-                        System.Console.WriteLine("canceled image import");
-                    break;
-                case ItemType.DATA_EXTRACTION:
-                    imageFile = await FilePicker.PickAsync(new PickOptions
-                    {
-                        FileTypes = FilePickerFileType.Images
-                    });
-                    if (imageFile != null)
-                        OpenDataResultActivity(imageFile.FullPath);
-                    else
-                        System.Console.WriteLine("canceled image import");
-                    break;
-                case ItemType.TEXT_RECOGNITION:
-                    imageFile = await FilePicker.PickAsync(new PickOptions
-                    {
-                        FileTypes = FilePickerFileType.Images
-                    });
-                    if (imageFile != null)
-                        OpenTextResultActivity(imageFile.FullPath);
-                    else
-                        System.Console.WriteLine("canceled image import");
-                    break;
-                default:
-                    System.Console.WriteLine("Select an input option first");
-                    break;
-            }
-        }
+        }        
 
         private void StartDataExtraction()
         {
@@ -242,10 +262,10 @@ namespace Docutain_SDK_Example_Xamarin_Android
                        switch (args.Which)
                        {
                            case 0:
-                               StartScan();
+                               StartScan(false);
                                break;
                            case 1:
-                               StartImageImport();
+                               StartScan(true);
                                break;
                            case 2:
                                StartPDFImport();
@@ -257,7 +277,7 @@ namespace Docutain_SDK_Example_Xamarin_Android
 
         private void GeneratePDF(string filePath)
         {
-            Task.Run(async () =>
+            Task.Run(() =>
             {
                 if (!string.IsNullOrEmpty(filePath))
                 {
@@ -321,23 +341,38 @@ namespace Docutain_SDK_Example_Xamarin_Android
         {
             new MaterialAlertDialogBuilder(this)
                 .SetTitle("License empty")
-                .SetMessage("A valid license key is required. Please contact us via sdk@Docutain.com to get a trial license.")
-                .SetNegativeButton("Cancel", (sender, args) => { })
+                .SetMessage("A valid license key is required. Please click \"GET LICENSE\" in order to create a free trial license key on our website.")
                 .SetPositiveButton("Get License", (sender, args) =>
                 {
-                    var intent = new Intent(Intent.ActionSendto);
-                    intent.SetData(Uri.Parse("mailto:"));
-                    intent.PutExtra(Intent.ExtraEmail, new[] { "sdk@Docutain.com" });
-                    intent.PutExtra(Intent.ExtraSubject, "Trial License Request");
+                    Intent intent = new Intent(Intent.ActionView, Uri.Parse("https://sdk.docutain.com/TrialLicense?Source=1311235"));
+                    StartActivity(intent);
+                    Finish();
+                })
+                .SetCancelable(false)
+                .Show();
+        }
+
+        private void ShowLicenseErrorInfo()
+        {
+            new MaterialAlertDialogBuilder(this)
+                .SetTitle("License error")
+                .SetMessage("A valid license key is required. Please contact our support to get an extended trial license.")
+                .SetPositiveButton("Contact Support", (sender, args) =>
+                {
+                    Intent intent = new Intent(Intent.ActionSendto, Uri.Parse("mailto:support.sdk@Docutain.com"));
+                    intent.PutExtra(Intent.ExtraSubject, "Trial License Error");
+                    intent.PutExtra(Intent.ExtraText, $"Please keep your following trial license key in this e-mail: {licenseKey}");
                     if (intent.ResolveActivity(PackageManager) != null)
                     {
                         StartActivity(intent);
+                        Finish();
                     }
                     else
                     {
                         System.Console.WriteLine("No Mail App available, please contact us manually via sdk@Docutain.com");
                     }
                 })
+                .SetCancelable(false)
                 .Show();
         }
     }
